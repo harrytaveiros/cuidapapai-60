@@ -1,0 +1,8 @@
+com.example.cuida_papai.app-debug-0 C:\Users\harry\StudioProjects\CuidaPapai\android\app\src\debug\res
+com.example.cuida_papai.app-main-1 C:\Users\harry\StudioProjects\CuidaPapai\android\app\src\main\res
+com.example.cuida_papai.app-pngs-2 C:\Users\harry\StudioProjects\CuidaPapai\build\app\generated\res\pngs\debug
+com.example.cuida_papai.app-updated_navigation_xml-3 C:\Users\harry\StudioProjects\CuidaPapai\build\app\generated\updated_navigation_xml\debug
+com.example.cuida_papai.app-packageDebugResources-4 C:\Users\harry\StudioProjects\CuidaPapai\build\app\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.example.cuida_papai.app-packageDebugResources-5 C:\Users\harry\StudioProjects\CuidaPapai\build\app\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.example.cuida_papai.app-debug-6 C:\Users\harry\StudioProjects\CuidaPapai\build\app\intermediates\merged_res\debug\mergeDebugResources
+gradleHome-0 C:\Users\harry\.gradle
