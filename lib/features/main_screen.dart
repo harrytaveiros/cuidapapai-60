@@ -37,7 +37,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       // Utilizamos o nosso componente reutilizável e com fundo colorido
-      appBar: const CustomAppBar(title: 'CuidaPapai+60'),
+      appBar: const CustomAppBar(title: 'CuidaPapai+50'),
       // O IndexedStack mantém o estado das telas (scroll, formulários, etc)
       body: IndexedStack(
         index: _currentIndex,

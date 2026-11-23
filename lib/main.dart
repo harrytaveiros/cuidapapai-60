@@ -5,8 +5,8 @@ import 'package:cuida_papai/core/theme/app_theme.dart';
 import 'package:cuida_papai/core/theme/theme_manager.dart';
 import 'package:cuida_papai/core/service_locator.dart';
 
-// Importação da nova tela principal
-import 'package:cuida_papai/features/main_screen.dart';
+// Importação da tela de Login (Nova Rota Inicial)
+import 'package:cuida_papai/features/auth/login_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,13 +45,13 @@ class _CuidaPapaiAppState extends State<CuidaPapaiApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CuidaPapai+60',
+      title: 'CuidaPapai+50',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: _themeManager.themeMode,
-      // Agora o app inicia direto no MainScreen, que gerencia a navegação
-      home: const MainScreen(),
+      // Agora o app inicia na Tela de Login
+      home: const LoginScreen(),
     );
   }
 }
