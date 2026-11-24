@@ -1,11 +1,11 @@
 /// Modelo que representa um medicamento na rotina do idoso.
 class MedicationModel {
   final String id;
-  final String nome;
-  final String dosagem;
-  final String horario;
-  final String instrucoes; // Ex: "Após o café"
-  bool isTaken; // Controla se o idoso já tomou o remédio
+  final String nome; // Mapeado de 'name'
+  final String dosagem; // Mapeado de 'dosage'
+  final String horario; // Mapeado de 'time'
+  final String instrucoes; // Mapeado de 'instructions'
+  bool isTaken; // Mapeado de 'is_taken'
 
   MedicationModel({
     required this.id,
@@ -15,6 +15,17 @@ class MedicationModel {
     this.instrucoes = '',
     this.isTaken = false,
   });
+
+  factory MedicationModel.fromJson(Map<String, dynamic> json) {
+    return MedicationModel(
+      id: json['id'] ?? '',
+      nome: json['name'] ?? '',
+      dosagem: json['dosage'] ?? '',
+      horario: json['time'] ?? '',
+      instrucoes: json['instructions'] ?? '',
+      isTaken: json['is_taken'] ?? false,
+    );
+  }
 
   /// Helper para exibir o nome e dosagem de forma unificada
   String get tituloExibicao => '$nome $dosagem';

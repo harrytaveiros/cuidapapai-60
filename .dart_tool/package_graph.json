@@ -11,6 +11,7 @@
         "dio",
         "flutter",
         "get_it",
+        "http",
         "intl",
         "logger",
         "material_ui"
@@ -43,6 +44,16 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "http",
+      "version": "1.6.0",
+      "dependencies": [
+        "async",
+        "http_parser",
+        "meta",
+        "web"
       ]
     },
     {
@@ -205,12 +216,42 @@
       ]
     },
     {
+      "name": "web",
+      "version": "1.1.2",
+      "dependencies": []
+    },
+    {
+      "name": "http_parser",
+      "version": "4.1.2",
+      "dependencies": [
+        "collection",
+        "source_span",
+        "string_scanner",
+        "typed_data"
+      ]
+    },
+    {
       "name": "async",
       "version": "2.13.1",
       "dependencies": [
         "collection",
         "meta"
       ]
+    },
+    {
+      "name": "dio_web_adapter",
+      "version": "2.2.2",
+      "dependencies": [
+        "dio",
+        "http_parser",
+        "meta",
+        "web"
+      ]
+    },
+    {
+      "name": "mime",
+      "version": "2.1.0",
+      "dependencies": []
     },
     {
       "name": "material_color_utilities",
@@ -305,21 +346,6 @@
       ]
     },
     {
-      "name": "vm_service",
-      "version": "15.4.0",
-      "dependencies": []
-    },
-    {
-      "name": "http_parser",
-      "version": "4.1.2",
-      "dependencies": [
-        "collection",
-        "source_span",
-        "string_scanner",
-        "typed_data"
-      ]
-    },
-    {
       "name": "typed_data",
       "version": "1.4.0",
       "dependencies": [
@@ -327,23 +353,8 @@
       ]
     },
     {
-      "name": "mime",
-      "version": "2.1.0",
-      "dependencies": []
-    },
-    {
-      "name": "dio_web_adapter",
-      "version": "2.2.2",
-      "dependencies": [
-        "dio",
-        "http_parser",
-        "meta",
-        "web"
-      ]
-    },
-    {
-      "name": "web",
-      "version": "1.1.2",
+      "name": "vm_service",
+      "version": "15.4.0",
       "dependencies": []
     }
   ],

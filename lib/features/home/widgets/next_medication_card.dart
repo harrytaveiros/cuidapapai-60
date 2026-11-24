@@ -1,28 +1,20 @@
 import 'package:flutter/material.dart';
-import '../../../core/service_locator.dart';
-import '../../../core/services/care_service.dart';
-import '../../../core/theme/app_theme.dart'; // Import necessário para acessar AppColors
+import '../../../core/models/medication_model.dart';
+import '../../../core/theme/app_theme.dart';
 
-class NextMedicationCard extends StatefulWidget {
-  const NextMedicationCard({super.key});
+class NextMedicationCard extends StatelessWidget {
+  final MedicationModel? medication;
+  final VoidCallback onMarkAsTaken;
 
-  @override
-  State<NextMedicationCard> createState() => _NextMedicationCardState();
-}
-
-class _NextMedicationCardState extends State<NextMedicationCard> {
-  // Acessando o serviço Singleton via GetIt
-  final CareService _careService = locator<CareService>();
-
-  void _marcarComoTomado(String id) {
-    setState(() {
-      _careService.marcarComoTomado(id);
-    });
-  }
+  const NextMedicationCard({
+    super.key,
+    required this.medication,
+    required this.onMarkAsTaken,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final proximoMed = _careService.proximoMedicamento;
+    final proximoMed = medication;
     final primaryColor = Theme.of(context).primaryColor;
 
     // ESTADO 1: Não há próximos medicamentos (Tudo tomado)
@@ -56,7 +48,6 @@ class _NextMedicationCardState extends State<NextMedicationCard> {
     // ESTADO 2: Exibir o Card do Próximo Medicamento com Gradiente
     return Container(
       decoration: BoxDecoration(
-        // Substituindo a cor sólida por um LinearGradient elegante
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -139,8 +130,6 @@ class _NextMedicationCardState extends State<NextMedicationCard> {
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
-              // Mantemos a primaryColor do tema para o texto/ícone do botão
-              // para garantir que ele contraste bem com o fundo branco
               foregroundColor: primaryColor,
               minimumSize: const Size(double.infinity, 72),
               elevation: 0,
@@ -156,7 +145,7 @@ class _NextMedicationCardState extends State<NextMedicationCard> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            onPressed: () => _marcarComoTomado(proximoMed.id),
+            onPressed: onMarkAsTaken, // Recebe a função do componente pai
           ),
         ],
       ),
