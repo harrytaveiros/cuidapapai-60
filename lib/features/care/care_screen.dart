@@ -1,6 +1,17 @@
 import 'package:flutter/material.dart';
+
+import '../../core/services/api_service.dart';
+import '../../core/models/user_model.dart';
+import '../../core/models/care_task_model.dart';
 import '../../core/theme/app_theme.dart';
 import 'widgets/care_task_card.dart';
+
+class _CareData {
+  final UserModel user;
+  final List<CareTaskModel> tasks;
+
+  _CareData({required this.user, required this.tasks});
+}
 
 class CareScreen extends StatefulWidget {
   const CareScreen({super.key});
@@ -10,26 +21,47 @@ class CareScreen extends StatefulWidget {
 }
 
 class _CareScreenState extends State<CareScreen> {
-  // Lista de estados booleanos para as 4 tarefas.
-  // [0] = Pressão, [1] = Alimentação, [2] = Humor, [3] = Atividade Física
-  final List<bool> _taskStatus = [true, false, false, false];
+  late Future<_CareData> _careDataFuture;
+  final ApiService _apiService = ApiService();
 
-  // Método responsável por inverter o status da tarefa e atualizar a interface
-  void _toggleTask(int index) {
-    setState(() {
-      _taskStatus[index] = !_taskStatus[index];
-    });
+  @override
+  void initState() {
+    super.initState();
+    _careDataFuture = _fetchData();
   }
 
-  // Auxiliar para gerar o subtítulo dinâmico baseado no status de conclusão
-  String _getSubtitle(int index, bool isCompleted) {
-    if (!isCompleted) return 'Toque para registrar';
+  Future<_CareData> _fetchData() async {
+    final results = await Future.wait([
+      _apiService.getUserProfile(),
+      _apiService.getTodayCareTasks(),
+    ]);
 
-    // O primeiro item (Pressão) ganha o texto mockado extra se estiver concluído
-    if (index == 0) return 'Registrado hoje (120x80)';
+    return _CareData(
+      user: results[0] as UserModel,
+      tasks: results[1] as List<CareTaskModel>,
+    );
+  }
 
-    // Texto padrão para as outras tarefas concluídas
-    return 'Registrado hoje';
+  Color _colorFromHex(String hexColor) {
+    hexColor = hexColor.toUpperCase().replaceAll("#", "");
+    if (hexColor.length == 6) hexColor = "FF$hexColor";
+    return Color(int.tryParse(hexColor, radix: 16) ?? 0xFF000000);
+  }
+
+  // Ícone fixo genérico ou mapeamento manual de categorias
+  IconData _getIconForCategory(String category) {
+    switch (category) {
+      case 'blood_pressure':
+        return Icons.monitor_heart;
+      case 'meal':
+        return Icons.restaurant;
+      case 'mood':
+        return Icons.sentiment_satisfied_alt;
+      case 'exercise':
+        return Icons.directions_walk;
+      default:
+        return Icons.health_and_safety;
+    }
   }
 
   @override
@@ -41,193 +73,202 @@ class _CareScreenState extends State<CareScreen> {
     final textColor = isDark ? Colors.white : azulMarinho;
     final primaryColor = theme.primaryColor;
 
-    // Cálculo dinâmico do número de tarefas concluídas
-    final completedCount = _taskStatus.where((status) => status).length;
-    final totalTasks = _taskStatus.length;
-    final progressValue = completedCount / totalTasks;
-
     return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 32.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. CABEÇALHO DA PÁGINA
-            Row(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: primaryColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(
-                    Icons.favorite,
-                    color: primaryColor,
-                    size: 32,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'ACOMPANHAMENTO',
-                      style: TextStyle(
-                        color: isDark ? theme.colorScheme.secondary : azulMarinho.withValues(alpha: 0.8),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    Text(
-                      'Cuidados de hoje',
-                      style: theme.textTheme.displayMedium?.copyWith(
-                        color: textColor,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 32,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+      body: FutureBuilder<_CareData>(
+        future: _careDataFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator(color: primaryColor));
+          }
 
-            const SizedBox(height: 32),
-
-            // 2. CARD DE PROGRESSO
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.gradientStart,
-                    AppColors.gradientEnd,
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: primaryColor.withValues(alpha: 0.3),
-                    blurRadius: 15,
-                    offset: const Offset(0, 8),
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: primaryColor),
+                  const SizedBox(height: 16),
+                  const Text('Não foi possível carregar as tarefas.', style: TextStyle(fontSize: 18)),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () => setState(() => _careDataFuture = _fetchData()),
+                    style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white),
+                    child: const Text('Tentar novamente'),
                   ),
                 ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Texto de Progresso Dinâmico
-                      Text(
-                        '$completedCount de $totalTasks',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                          height: 1.0,
-                        ),
+            );
+          }
+
+          final data = snapshot.data!;
+          final user = data.user;
+          final careTasks = data.tasks;
+
+          final completedCount = careTasks.where((task) => task.isCompleted).length;
+          final totalTasks = careTasks.isNotEmpty ? careTasks.length : 1; // Evita divisão por zero
+          final progressValue = careTasks.isEmpty ? 0.0 : (completedCount / totalTasks);
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 32.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // CABEÇALHO DA PÁGINA
+                Row(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: primaryColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4.0),
-                        child: Text(
-                          'registros preenchidos',
+                      child: Icon(Icons.favorite, color: primaryColor, size: 32),
+                    ),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ACOMPANHAMENTO',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.8),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                            color: isDark ? theme.colorScheme.secondary : azulMarinho.withValues(alpha: 0.8),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            letterSpacing: 1.2,
                           ),
+                        ),
+                        Text(
+                          'Cuidados de hoje',
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            color: textColor,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 32,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+
+                // CARD DE PROGRESSO
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AppColors.gradientStart, AppColors.gradientEnd],
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryColor.withValues(alpha: 0.3),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            careTasks.isEmpty ? '0 de 0' : '$completedCount de ${careTasks.length}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 32,
+                              fontWeight: FontWeight.w900,
+                              height: 1.0,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4.0),
+                            child: Text(
+                              'registros preenchidos',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0, end: progressValue),
+                          duration: const Duration(milliseconds: 500),
+                          curve: Curves.easeInOut,
+                          builder: (context, value, _) {
+                            return LinearProgressIndicator(
+                              value: value,
+                              minHeight: 8,
+                              backgroundColor: Colors.black.withValues(alpha: 0.2),
+                              color: theme.colorScheme.secondary,
+                            );
+                          },
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                ),
+                const SizedBox(height: 40),
 
-                  // Barra de Progresso Dinâmica com animação
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween<double>(begin: 0, end: progressValue),
-                      duration: const Duration(milliseconds: 500),
-                      curve: Curves.easeInOut,
-                      builder: (context, value, _) {
-                        return LinearProgressIndicator(
-                          value: value,
-                          minHeight: 8,
-                          backgroundColor: Colors.black.withValues(alpha: 0.2),
-                          color: theme.colorScheme.secondary,
-                        );
-                      },
-                    ),
+                // TÍTULO DA SEÇÃO DINÂMICO
+                Text(
+                  'Como ${user.shortName} está?',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 16),
+
+                // LISTA DE TAREFAS DINÂMICA DA API
+                if (careTasks.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      'Tudo certo! Sem pendências para hoje.',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                    ),
+                  )
+                else
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: careTasks.length,
+                    itemBuilder: (context, index) {
+                      final task = careTasks[index];
+                      return CareTaskCard(
+                        icon: _getIconForCategory(task.category),
+                        iconColor: _colorFromHex(task.colorHex),
+                        title: task.title,
+                        subtitle: task.isCompleted ? 'Registrado hoje' : task.subtitle,
+                        isCompleted: task.isCompleted,
+                        onTap: () {
+                          // Toggle otimista na tela Cuidados
+                          setState(() {
+                            task.isCompleted = !task.isCompleted;
+                          });
+                        },
+                      );
+                    },
+                  ),
+
+                const SizedBox(height: 40),
+              ],
             ),
-
-            const SizedBox(height: 40),
-
-            Text(
-              'Como Dona Maria está?',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: textColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 24,
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // 4. LISTA DE TAREFAS (Interativas)
-
-            // 4.1 Pressão Arterial
-            CareTaskCard(
-              icon: Icons.monitor_heart,
-              iconColor: primaryColor,
-              title: 'Pressão arterial',
-              subtitle: _getSubtitle(0, _taskStatus[0]),
-              isCompleted: _taskStatus[0],
-              onTap: () => _toggleTask(0),
-            ),
-
-            // 4.2 Alimentação
-            CareTaskCard(
-              icon: Icons.restaurant,
-              iconColor: const Color(0xFF0D47A1),
-              title: 'Alimentação',
-              subtitle: _getSubtitle(1, _taskStatus[1]),
-              isCompleted: _taskStatus[1],
-              onTap: () => _toggleTask(1),
-            ),
-
-            // 4.3 Humor
-            CareTaskCard(
-              icon: Icons.sentiment_satisfied_alt,
-              iconColor: const Color(0xFFF39C12),
-              title: 'Humor e disposição',
-              subtitle: _getSubtitle(2, _taskStatus[2]),
-              isCompleted: _taskStatus[2],
-              onTap: () => _toggleTask(2),
-            ),
-
-            // 4.4 Atividade Física
-            CareTaskCard(
-              icon: Icons.directions_walk,
-              iconColor: const Color(0xFF00BCD4),
-              title: 'Atividade física',
-              subtitle: _getSubtitle(3, _taskStatus[3]),
-              isCompleted: _taskStatus[3],
-              onTap: () => _toggleTask(3),
-            ),
-
-            const SizedBox(height: 40),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

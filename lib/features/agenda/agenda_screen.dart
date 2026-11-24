@@ -1,8 +1,31 @@
 import 'package:flutter/material.dart';
+
+import '../../core/services/api_service.dart';
+import '../../core/models/appointment_model.dart';
 import 'widgets/timeline_event_card.dart';
 
-class AgendaScreen extends StatelessWidget {
+class AgendaScreen extends StatefulWidget {
   const AgendaScreen({super.key});
+
+  @override
+  State<AgendaScreen> createState() => _AgendaScreenState();
+}
+
+class _AgendaScreenState extends State<AgendaScreen> {
+  late Future<List<AppointmentModel>> _appointmentsFuture;
+  final ApiService _apiService = ApiService();
+
+  @override
+  void initState() {
+    super.initState();
+    _appointmentsFuture = _apiService.getUpcomingAppointments();
+  }
+
+  Color _colorFromHex(String hexColor) {
+    hexColor = hexColor.toUpperCase().replaceAll("#", "");
+    if (hexColor.length == 6) hexColor = "FF$hexColor";
+    return Color(int.tryParse(hexColor, radix: 16) ?? 0xFF000000);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -10,141 +33,159 @@ class AgendaScreen extends StatelessWidget {
     const azulMarinho = Color(0xFF000080);
     const cianoColor = Color(0xFF00BCD4);
 
-    // Suporte ao tema escuro
     final isDark = themeData.brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : azulMarinho;
     final bgIconColor = isDark ? Colors.grey[800] : const Color(0xFFE0E7FF);
     final iconColor = isDark ? Colors.white : azulMarinho;
 
     return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 32.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. CABEÇALHO DA PÁGINA
-            Row(
-              children: [
-                // Ícone quadrado de Calendário
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: bgIconColor,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(
-                    Icons.calendar_month,
-                    color: iconColor,
-                    size: 32,
-                  ),
-                ),
-                const SizedBox(width: 16),
+      body: FutureBuilder<List<AppointmentModel>>(
+        future: _appointmentsFuture,
+        builder: (context, snapshot) {
+          // ESTADO 1: CARREGANDO
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(color: themeData.primaryColor),
+            );
+          }
 
-                // Textos do Cabeçalho
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'ORGANIZAÇÃO',
-                      style: TextStyle(
-                        color: isDark ? cianoColor : azulMarinho.withValues(alpha: 0.8),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    Text(
-                      'Minha agenda',
-                      style: themeData.textTheme.displayMedium?.copyWith(
-                        color: textColor,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 32,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-
-            // 2. BOTÃO NOVO COMPROMISSO
-            ElevatedButton(
-              onPressed: () {
-                // Ação para criar compromisso
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: themeData.primaryColor, // Verde do tema
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 64), // Altura acessível
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: const Row(
+          // ESTADO 2: ERRO
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.add, size: 28),
-                  SizedBox(width: 8),
-                  Text(
-                    'Novo compromisso',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Icon(Icons.error_outline, size: 64, color: themeData.primaryColor),
+                  const SizedBox(height: 16),
+                  const Text('Não foi possível carregar a agenda.', style: TextStyle(fontSize: 18)),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () => setState(() => _appointmentsFuture = _apiService.getUpcomingAppointments()),
+                    style: ElevatedButton.styleFrom(backgroundColor: themeData.primaryColor, foregroundColor: Colors.white),
+                    child: const Text('Tentar novamente'),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 40),
+            );
+          }
 
-            // 3. TÍTULO DE SEÇÃO "ESTA SEMANA"
-            Text(
-              'Esta semana',
-              style: themeData.textTheme.bodyLarge?.copyWith(
-                color: textColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 24,
-              ),
-            ),
-            const SizedBox(height: 16),
+          // ESTADO 3: SUCESSO
+          final appointments = snapshot.data ?? [];
 
-            // 4. LISTA DE COMPROMISSOS (Timeline)
-            // 4.1 Cardiologista
-            const TimelineEventCard(
-              bulletColor: azulMarinho, // Azul Marinho Escuro
-              dayOfWeek: 'QUA',
-              dayNumber: '14',
-              time: '10:30',
-              title: 'Consulta com cardiologista',
-              subtitle: 'Clínica São Lucas - Dr. Roberto',
-            ),
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 32.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // CABEÇALHO DA PÁGINA
+                Row(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: bgIconColor,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(Icons.calendar_month, color: iconColor, size: 32),
+                    ),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ORGANIZAÇÃO',
+                          style: TextStyle(
+                            color: isDark ? cianoColor : azulMarinho.withValues(alpha: 0.8),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        Text(
+                          'Minha agenda',
+                          style: themeData.textTheme.displayMedium?.copyWith(
+                            color: textColor,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 32,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
 
-            // 4.2 Fisioterapia
-            const TimelineEventCard(
-              bulletColor: Color(0xFFF39C12), // Amarelo Escuro/Mostarda
-              dayOfWeek: 'SEX',
-              dayNumber: '16',
-              time: '15:00',
-              title: 'Sessão de fisioterapia',
-              subtitle: 'Atendimento em casa (Sala)',
-            ),
+                // BOTÃO NOVO COMPROMISSO
+                ElevatedButton(
+                  onPressed: () {},
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: themeData.primaryColor,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 64),
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add, size: 28),
+                      SizedBox(width: 8),
+                      Text('Novo compromisso', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 40),
 
-            // 4.3 Almoço em família
-            const TimelineEventCard(
-              bulletColor: Color(0xFF126E51), // Verde Escuro (Primário)
-              dayOfWeek: 'SÁB',
-              dayNumber: '17',
-              time: '12:00',
-              title: 'Almoço em família',
-              subtitle: 'Casa da Juliana - Av. Brasil, 400',
-            ),
+                // TÍTULO DE SEÇÃO "ESTA SEMANA"
+                Text(
+                  'Esta semana',
+                  style: themeData.textTheme.bodyLarge?.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
+                  ),
+                ),
+                const SizedBox(height: 16),
 
-            // Espaçamento final
-            const SizedBox(height: 48),
-          ],
-        ),
+                // LISTA DE COMPROMISSOS DINÂMICA
+                if (appointments.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: themeData.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      'Nenhum compromisso agendado para os próximos dias.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: textColor, fontSize: 16),
+                    ),
+                  )
+                else
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: appointments.length,
+                    itemBuilder: (context, index) {
+                      final apt = appointments[index];
+                      return TimelineEventCard(
+                        bulletColor: _colorFromHex(apt.colorHex),
+                        dayOfWeek: apt.dayOfWeekShort,
+                        dayNumber: apt.dayNumber,
+                        time: apt.time,
+                        title: apt.title,
+                        subtitle: apt.subtitle,
+                      );
+                    },
+                  ),
+
+                const SizedBox(height: 48),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

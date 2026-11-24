@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'register_screen.dart';
 import '../main_screen.dart'; 
+import '../../core/services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,8 +12,69 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+
   // Controle de visibilidade da senha
   bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    // Validação básica do formulário
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Faz o login através do ApiService
+      await ApiService().login(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+
+      // Proteção de contexto no uso de async/await em State
+      if (!mounted) return;
+
+      // Navega para a Home e impede o utilizador de voltar ao Login com o botão de voltar
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainScreen()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      
+      // Remove o texto indesejado "Exception: " nativo do Dart
+      final errorMessage = e.toString().replaceAll('Exception: ', '');
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            errorMessage,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating, // Flutuante é melhor UI/UX
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   // Paleta de Cores Específica do Login (Design Figma)
   static const Color darkGreen = Color(0xFF126E51);
@@ -44,9 +106,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: IntrinsicHeight(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                           const SizedBox(height: 48),
 
                           // 1. LOGO CENTRALIZADO
@@ -131,7 +195,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 8),
                           TextFormField(
+                            controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Por favor, insira o seu e-mail.';
+                              }
+                              return null;
+                            },
                             decoration: InputDecoration(
                               hintText: 'seuemail@exemplo.com',
                               hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -166,7 +237,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 8),
                           TextFormField(
+                            controller: _passwordController,
                             obscureText: _obscurePassword,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Por favor, insira a sua senha.';
+                              }
+                              return null;
+                            },
                             decoration: InputDecoration(
                               hintText: 'Digite sua senha',
                               hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -226,13 +304,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           // 6. BOTÃO ENTRAR (CTA)
                           ElevatedButton(
-                            onPressed: () {
-                              // Navega para a Home e impede o utilizador de voltar ao Login com o botão de voltar
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (context) => const MainScreen()), // Substitua pelo nome correto da sua tela inicial
-                              );
-                            },
+                            onPressed: _isLoading ? null : _handleLogin,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: darkGreen,
                               foregroundColor: Colors.white,
@@ -242,20 +314,29 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               elevation: 2,
                             ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Entrar',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                            child: _isLoading 
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'Entrar',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Icon(Icons.chevron_right, size: 24),
+                                    ],
                                   ),
-                                ),
-                                SizedBox(width: 8),
-                                Icon(Icons.chevron_right, size: 24),
-                              ],
-                            ),
                           ),
 
                           const SizedBox(height: 24),
@@ -331,6 +412,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 24),
                         ],
+                      ),
                       ),
                     ),
                   ),
