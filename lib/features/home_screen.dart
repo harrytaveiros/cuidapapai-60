@@ -5,15 +5,26 @@ import 'package:intl/date_symbol_data_local.dart';
 import '../core/services/api_service.dart';
 import '../core/models/user_model.dart';
 import '../core/models/medication_model.dart';
+import '../core/models/appointment_model.dart';
+import '../core/models/care_task_model.dart';
+
 import 'home/widgets/next_medication_card.dart';
 import 'home/widgets/quick_access_grid.dart';
+import 'care/widgets/care_task_card.dart'; // Componente de Cuidados reaproveitado
 
 // Classe auxiliar para trafegar os dados simultâneos no FutureBuilder
 class _HomeData {
   final UserModel user;
   final List<MedicationModel> medications;
+  final List<AppointmentModel> appointments;
+  final List<CareTaskModel> careTasks;
 
-  _HomeData({required this.user, required this.medications});
+  _HomeData({
+    required this.user,
+    required this.medications,
+    required this.appointments,
+    required this.careTasks,
+  });
 }
 
 class HomeScreen extends StatefulWidget {
@@ -36,16 +47,29 @@ class _HomeScreenState extends State<HomeScreen> {
     _homeDataFuture = _fetchData();
   }
 
-  // Método que busca simultaneamente os dados da API
+  // Helper para converter String Hex ('#126E51') para classe Color
+  Color _colorFromHex(String hexColor) {
+    hexColor = hexColor.toUpperCase().replaceAll("#", "");
+    if (hexColor.length == 6) {
+      hexColor = "FF$hexColor";
+    }
+    return Color(int.tryParse(hexColor, radix: 16) ?? 0xFF000000);
+  }
+
+  // TAREFA 1: Expansão do Future.wait para carregar Agenda e Cuidados simultaneamente
   Future<_HomeData> _fetchData() async {
     final results = await Future.wait([
       _apiService.getUserProfile(),
       _apiService.getTodayMedications(),
+      _apiService.getUpcomingAppointments(),
+      _apiService.getTodayCareTasks(),
     ]);
 
     return _HomeData(
       user: results[0] as UserModel,
       medications: results[1] as List<MedicationModel>,
+      appointments: results[2] as List<AppointmentModel>,
+      careTasks: results[3] as List<CareTaskModel>,
     );
   }
 
@@ -64,6 +88,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final themeData = Theme.of(context);
+    final isDark = themeData.brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF000080);
 
     return Scaffold(
       body: FutureBuilder<_HomeData>(
@@ -116,13 +142,15 @@ class _HomeScreenState extends State<HomeScreen> {
           final data = snapshot.data!;
           final user = data.user;
           final medications = data.medications;
+          final appointments = data.appointments;
+          final careTasks = data.careTasks;
 
-          // Busca o primeiro medicamento pendente (não tomado)
+          // Busca o primeiro medicamento pendente
           MedicationModel? proximoMed;
           try {
             proximoMed = medications.firstWhere((med) => !med.isTaken);
           } catch (_) {
-            proximoMed = null; // Todos foram tomados (ou lista veio vazia)
+            proximoMed = null;
           }
 
           return SingleChildScrollView(
@@ -142,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Olá, ${user.shortName}!', // DADO REAL DA API AQUI
+                  'Olá, ${user.shortName}!', // Dado da API
                   style: themeData.textTheme.displayMedium?.copyWith(
                     fontWeight: FontWeight.w900,
                   ),
@@ -191,12 +219,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 const SizedBox(height: 32),
 
-                // 2. PRÓXIMO MEDICAMENTO (Card injetando dados reais da API)
+                // 2. PRÓXIMO MEDICAMENTO (Card injetando dados da API)
                 NextMedicationCard(
                   medication: proximoMed,
                   onMarkAsTaken: () {
-                    // Como a API não está completa para receber requisições, vamos forçar uma re-renderização local para fins visuais
-                    // Exemplo: apiService.markMedicationAsTaken(proximoMed.id);
+                    // Atualização otimista visual
                     setState(() {
                       proximoMed?.isTaken = true;
                     });
@@ -218,7 +245,59 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 const SizedBox(height: 40),
 
-                // 4. PRÓXIMOS COMPROMISSOS (Header)
+                // ==========================================
+                // TAREFA 3: LISTA DE CUIDADOS DIÁRIOS
+                // ==========================================
+                Text(
+                  'Cuidados diários',
+                  style: themeData.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                if (careTasks.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      'Tudo certo! Sem pendências para hoje.',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                    ),
+                  )
+                else
+                  // ListView.builder evita problemas de renderização na coluna e é muito eficiente
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: careTasks.length,
+                    itemBuilder: (context, index) {
+                      final task = careTasks[index];
+                      // Definindo um ícone estático genérico, pois a API não retorna ícone
+                      // O ideal é mapear o task.category para o IconData correto futuramente
+                      IconData taskIcon = Icons.health_and_safety;
+
+                      return CareTaskCard(
+                        icon: taskIcon,
+                        iconColor: _colorFromHex(task.colorHex),
+                        title: task.title,
+                        subtitle: task.subtitle,
+                        isCompleted: task.isCompleted,
+                        onTap: () {
+                          // Toggle otimista na tela Home
+                          setState(() {
+                            task.isCompleted = !task.isCompleted;
+                          });
+                        },
+                      );
+                    },
+                  ),
+
+                const SizedBox(height: 40),
+
+                // ==========================================
+                // TAREFA 2: PRÓXIMOS COMPROMISSOS (AGENDA)
+                // ==========================================
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -248,10 +327,39 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Card de Compromisso Refatorado (Figma)
-                _buildCompromissoCardFigma(context),
+                if (appointments.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: themeData.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      'Nenhum compromisso agendado para os próximos dias.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 16,
+                      ),
+                    ),
+                  )
+                else
+                  // ListView mapeando cada Appointment vindo da API
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: appointments.length,
+                    itemBuilder: (context, index) {
+                      final apt = appointments[index];
+                      // Para garantir o espaçamento entre múltiplos cards
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: _buildCompromissoCardDinamico(context, apt),
+                      );
+                    },
+                  ),
 
-                // Espaçamento extra no fim do Scroll
                 const SizedBox(height: 40),
               ],
             ),
@@ -261,14 +369,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Novo Widget do Card de Compromisso (Estilo Figma)
-  Widget _buildCompromissoCardFigma(BuildContext context) {
+  // Novo Widget do Card de Compromisso Injetando os Dados da API
+  Widget _buildCompromissoCardDinamico(BuildContext context, AppointmentModel appointment) {
     const azulMarinho = Color(0xFF000080);
-    const azulClaro = Color(0xFFE0E7FF);
+    final cardAccentColor = _colorFromHex(appointment.colorHex);
     
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? Colors.grey[900] : Colors.white;
     final textColor = isDark ? Colors.white : azulMarinho;
+    final bgDateColor = isDark ? Colors.black : cardAccentColor.withValues(alpha: 0.15);
 
     return Container(
       decoration: BoxDecoration(
@@ -286,40 +395,40 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.all(16),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(
               left: BorderSide(
-                color: azulMarinho, // Borda "fita" lateral esquerda
+                color: cardAccentColor, // Borda da cor definida pelo backend
                 width: 4,
               ),
             ),
           ),
           child: Row(
             children: [
-              // Bloco da Data (Quadrado Azul Claro)
+              // Bloco da Data (Quadrado Colorido Inteligente)
               Container(
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: azulClaro,
+                  color: bgDateColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      '14',
+                    Text(
+                      appointment.dayNumber,
                       style: TextStyle(
-                        color: azulMarinho,
+                        color: isDark ? Colors.white : cardAccentColor,
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         height: 1.0,
                       ),
                     ),
                     Text(
-                      'MAI',
+                      appointment.dayOfWeekShort.toUpperCase(),
                       style: TextStyle(
-                        color: azulMarinho.withValues(alpha: 0.8),
+                        color: isDark ? Colors.white70 : cardAccentColor.withValues(alpha: 0.8),
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.1,
@@ -330,12 +439,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(width: 16),
               
-              // Informações Centrais
+              // Informações Centrais da API
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Ícone de Relógio e Horário
                     Row(
                       children: [
                         Icon(
@@ -345,7 +453,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '10:30',
+                          appointment.time,
                           style: TextStyle(
                             color: Theme.of(context).primaryColor,
                             fontWeight: FontWeight.bold,
@@ -355,10 +463,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    
-                    // Título do Compromisso
                     Text(
-                      'Consulta com cardiologista',
+                      appointment.title,
                       style: TextStyle(
                         color: textColor,
                         fontWeight: FontWeight.bold,
@@ -369,10 +475,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    
-                    // Subtítulo / Local
                     Text(
-                      'Clínica São Lucas - Dr. Roberto',
+                      appointment.subtitle,
                       style: TextStyle(
                         color: Colors.grey.shade600,
                         fontSize: 14,
@@ -385,7 +489,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(width: 8),
               
-              // Ícone Seta para a direita (Call to Action implícita)
               const Icon(
                 Icons.chevron_right,
                 color: Colors.grey,
