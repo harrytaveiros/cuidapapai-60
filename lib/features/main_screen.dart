@@ -19,11 +19,13 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
   // Lista de telas que serão empilhadas
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    AgendaScreen(),
-    CareScreen(),
-    FamilyScreen(),
+  late final List<Widget> _screens = [
+    HomeScreen(
+      onNavigateToAgenda: () => _onItemTapped(1), // Índice 1 = Agenda
+    ),
+    const AgendaScreen(),
+    const CareScreen(),
+    const FamilyScreen(),
   ];
 
   // Método chamado ao tocar em um item do BottomNavigationBar

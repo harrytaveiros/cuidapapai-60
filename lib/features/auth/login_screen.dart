@@ -196,7 +196,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 8),
                           TextFormField(
                             controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
+                            keyboardType: TextInputType.emailAddress, // Mostra o teclado otimizado para e-mail (com @)
+                            textCapitalization: TextCapitalization.none, // Desativa a letra maiúscula automática
+                            // ... resto do seu código (validator, decoration, etc.)
                             validator: (value) {
                               if (value == null || value.isEmpty) {
                                 return 'Por favor, insira o seu e-mail.';

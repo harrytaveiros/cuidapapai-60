@@ -10,7 +10,8 @@ import '../core/models/care_task_model.dart';
 
 import 'home/widgets/next_medication_card.dart';
 import 'home/widgets/quick_access_grid.dart';
-import 'care/widgets/care_task_card.dart'; // Componente de Cuidados reaproveitado
+import 'care/widgets/care_task_card.dart';
+import 'forms/edit_appointment_screen.dart'; // Componente de Edição
 
 // Classe auxiliar para trafegar os dados simultâneos no FutureBuilder
 class _HomeData {
@@ -28,7 +29,9 @@ class _HomeData {
 }
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final VoidCallback? onNavigateToAgenda; // Callback opcional para trocar de aba
+
+  const HomeScreen({super.key, this.onNavigateToAgenda});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -56,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Color(int.tryParse(hexColor, radix: 16) ?? 0xFF000000);
   }
 
-  // TAREFA 1: Expansão do Future.wait para carregar Agenda e Cuidados simultaneamente
+  // Expansão do Future.wait para carregar Agenda e Cuidados simultaneamente
   Future<_HomeData> _fetchData() async {
     final results = await Future.wait([
       _apiService.getUserProfile(),
@@ -245,54 +248,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 const SizedBox(height: 40),
 
-                // ==========================================
-                // TAREFA 3: LISTA DE CUIDADOS DIÁRIOS
-                // ==========================================
-                Text(
-                  'Cuidados diários',
-                  style: themeData.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 24,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                if (careTasks.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                      'Tudo certo! Sem pendências para hoje.',
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
-                    ),
-                  )
-                else
-                  // ListView.builder evita problemas de renderização na coluna e é muito eficiente
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: careTasks.length,
-                    itemBuilder: (context, index) {
-                      final task = careTasks[index];
-                      // Definindo um ícone estático genérico, pois a API não retorna ícone
-                      // O ideal é mapear o task.category para o IconData correto futuramente
-                      IconData taskIcon = Icons.health_and_safety;
-
-                      return CareTaskCard(
-                        icon: taskIcon,
-                        iconColor: _colorFromHex(task.colorHex),
-                        title: task.title,
-                        subtitle: task.subtitle,
-                        isCompleted: task.isCompleted,
-                        onTap: () {
-                          // Toggle otimista na tela Home
-                          setState(() {
-                            task.isCompleted = !task.isCompleted;
-                          });
-                        },
-                      );
-                    },
-                  ),
-
                 const SizedBox(height: 40),
 
                 // ==========================================
@@ -309,7 +264,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        // TAREFA 3: Navega para a aba de Agenda se o callback existir
+                        if (widget.onNavigateToAgenda != null) {
+                          widget.onNavigateToAgenda!();
+                        }
+                      },
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -345,7 +305,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   )
                 else
-                  // ListView mapeando cada Appointment vindo da API
+                // ListView mapeando cada Appointment vindo da API
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -370,10 +330,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Novo Widget do Card de Compromisso Injetando os Dados da API
+  // <-- Blocos corrigidos e devidamente fechados abaixo!
   Widget _buildCompromissoCardDinamico(BuildContext context, AppointmentModel appointment) {
     const azulMarinho = Color(0xFF000080);
     final cardAccentColor = _colorFromHex(appointment.colorHex);
-    
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? Colors.grey[900] : Colors.white;
     final textColor = isDark ? Colors.white : azulMarinho;
@@ -393,108 +354,125 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            border: Border(
-              left: BorderSide(
-                color: cardAccentColor, // Borda da cor definida pelo backend
-                width: 4,
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              // Bloco da Data (Quadrado Colorido Inteligente)
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: bgDateColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      appointment.dayNumber,
-                      style: TextStyle(
-                        color: isDark ? Colors.white : cardAccentColor,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        height: 1.0,
-                      ),
-                    ),
-                    Text(
-                      appointment.dayOfWeekShort.toUpperCase(),
-                      style: TextStyle(
-                        color: isDark ? Colors.white70 : cardAccentColor.withValues(alpha: 0.8),
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.1,
-                      ),
-                    ),
-                  ],
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => EditAppointmentScreen(appointment: appointment)),
+              );
+              // Se foi editado ou apagado (true), força o refresh da Home
+              if (result == true) {
+                setState(() {
+                  _homeDataFuture = _fetchData();
+                });
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(
+                    color: cardAccentColor, // Borda da cor definida pelo backend
+                    width: 4,
+                  ),
                 ),
               ),
-              const SizedBox(width: 16),
-              
-              // Informações Centrais da API
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              child: Row(
+                children: [
+                  // Bloco da Data (Quadrado Colorido Inteligente)
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: bgDateColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.access_time,
-                          size: 16,
-                          color: Theme.of(context).primaryColor,
-                        ),
-                        const SizedBox(width: 4),
                         Text(
-                          appointment.time,
+                          appointment.dayNumber,
                           style: TextStyle(
-                            color: Theme.of(context).primaryColor,
+                            color: isDark ? Colors.white : cardAccentColor,
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                            height: 1.0,
+                          ),
+                        ),
+                        Text(
+                          appointment.dayOfWeekShort.toUpperCase(),
+                          style: TextStyle(
+                            color: isDark ? Colors.white70 : cardAccentColor.withValues(alpha: 0.8),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.1,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      appointment.title,
-                      style: TextStyle(
-                        color: textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        height: 1.2,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(width: 16),
+
+                  // Informações Centrais da API
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.access_time,
+                              size: 16,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              appointment.time,
+                              style: TextStyle(
+                                color: Theme.of(context).primaryColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          appointment.title,
+                          style: TextStyle(
+                            color: textColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            height: 1.2,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          appointment.subtitle,
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      appointment.subtitle,
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 14,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  const Icon(
+                    Icons.chevron_right,
+                    color: Colors.grey,
+                    size: 28,
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              
-              const Icon(
-                Icons.chevron_right,
-                color: Colors.grey,
-                size: 28,
-              ),
-            ],
+            ),
           ),
         ),
       ),

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/services/api_service.dart';
 import '../../core/models/appointment_model.dart';
+import '../forms/add_appointment_screen.dart';
+import '../forms/edit_appointment_screen.dart'; 
 import 'widgets/timeline_event_card.dart';
 
 class AgendaScreen extends StatefulWidget {
@@ -25,6 +27,62 @@ class _AgendaScreenState extends State<AgendaScreen> {
     hexColor = hexColor.toUpperCase().replaceAll("#", "");
     if (hexColor.length == 6) hexColor = "FF$hexColor";
     return Color(int.tryParse(hexColor, radix: 16) ?? 0xFF000000);
+  }
+
+  // TAREFA 2: Método para exibir as opções de Editar/Excluir no Cartão
+  void _showOptionsBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (BuildContext ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.edit_outlined, color: Color(0xFF000080)),
+                title: const Text(
+                  'Editar compromisso',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Em breve: Edição de compromisso')),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  'Excluir compromisso',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Em breve: Exclusão de compromisso')),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -118,7 +176,20 @@ class _AgendaScreenState extends State<AgendaScreen> {
 
                 // BOTÃO NOVO COMPROMISSO
                 ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () async {
+                    // Aguarda o resultado do formulário
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const AddAppointmentScreen()),
+                    );
+                    
+                    // Se result for true, recarrega a lista de compromissos da API
+                    if (result == true) {
+                      setState(() {
+                        _appointmentsFuture = _apiService.getUpcomingAppointments();
+                      });
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: themeData.primaryColor,
                     foregroundColor: Colors.white,
@@ -170,13 +241,30 @@ class _AgendaScreenState extends State<AgendaScreen> {
                     itemCount: appointments.length,
                     itemBuilder: (context, index) {
                       final apt = appointments[index];
-                      return TimelineEventCard(
-                        bulletColor: _colorFromHex(apt.colorHex),
-                        dayOfWeek: apt.dayOfWeekShort,
-                        dayNumber: apt.dayNumber,
-                        time: apt.time,
-                        title: apt.title,
-                        subtitle: apt.subtitle,
+                      // Envolve o card para gerenciar a interatividade de Editar/Excluir
+                      return InkWell(
+                        onLongPress: () => _showOptionsBottomSheet(context),
+                        onTap: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => EditAppointmentScreen(appointment: apt)),
+                          );
+                          // Se houve edição ou exclusão, recarregamos a Agenda
+                          if (result == true) {
+                            setState(() {
+                              _appointmentsFuture = _apiService.getUpcomingAppointments();
+                            });
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: TimelineEventCard(
+                          bulletColor: _colorFromHex(apt.colorHex),
+                          dayOfWeek: apt.dayOfWeekShort,
+                          dayNumber: apt.dayNumber,
+                          time: apt.time,
+                          title: apt.title,
+                          subtitle: apt.subtitle,
+                        ),
                       );
                     },
                   ),

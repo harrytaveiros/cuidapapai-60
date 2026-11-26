@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../forms/add_appointment_screen.dart';
+import '../../forms/add_medication_screen.dart';
+import '../../forms/add_caregiver_screen.dart';
+
 class QuickAccessGrid extends StatelessWidget {
   const QuickAccessGrid({super.key});
 
@@ -18,28 +22,54 @@ class QuickAccessGrid extends StatelessWidget {
               title: 'Nova consulta',
               width: itemWidth,
               accentColor: const Color(0xFF0D47A1), // Azul Escuro
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AddAppointmentScreen()),
+                );
+              },
             ),
             QuickAccessItem(
               icon: Icons.alarm_add,
               title: 'Lembrete de\nremédio',
               width: itemWidth,
               accentColor: const Color(0xFFF39C12), // Amarelo
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AddMedicationScreen()),
+                );
+              },
             ),
             QuickAccessItem(
               icon: Icons.monitor_heart,
               title: 'Registrar\ncuidado',
               width: itemWidth,
               accentColor: const Color(0xFF126E51), // Verde Escuro
-              onTap: () {},
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text(
+                      'Redirecionando para a aba de Cuidados...',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    backgroundColor: Theme.of(context).primaryColor,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
             ),
             QuickAccessItem(
               icon: Icons.person_search,
               title: 'Buscar\ncuidador',
               width: itemWidth,
               accentColor: const Color(0xFF00BCD4), // Ciano
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AddCaregiverScreen()),
+                );
+              },
             ),
           ],
         );

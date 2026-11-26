@@ -4,6 +4,7 @@ import '../../core/services/api_service.dart';
 import '../../core/models/user_model.dart';
 import '../../core/models/care_task_model.dart';
 import '../../core/theme/app_theme.dart';
+import '../forms/add_task_screen.dart'; // Import para navegação
 import 'widgets/care_task_card.dart';
 
 class _CareData {
@@ -219,6 +220,39 @@ class _CareScreenState extends State<CareScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // BOTÃO DE METAS
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AddTaskScreen()),
+                    );
+                    if (result == true) {
+                      setState(() {
+                        _careDataFuture = _fetchData();
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.check, size: 20, color: Color(0xFF126E51)),
+                  label: const Text(
+                    'Definir metas de hoje',
+                    style: TextStyle(
+                      color: Color(0xFF126E51),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    side: const BorderSide(color: Color(0xFF126E51)),
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+
                 const SizedBox(height: 40),
 
                 // TÍTULO DA SEÇÃO DINÂMICO
@@ -259,6 +293,23 @@ class _CareScreenState extends State<CareScreen> {
                           setState(() {
                             task.isCompleted = !task.isCompleted;
                           });
+                        },
+                        onDelete: () async {
+                          try {
+                            await _apiService.deleteCareTask(task.id);
+                            setState(() {
+                              _careDataFuture = _fetchData();
+                            });
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Erro ao excluir tarefa'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
                         },
                       );
                     },

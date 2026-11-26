@@ -210,4 +210,152 @@ class ApiService {
       throw Exception('Falha de conexão ao tentar buscar a rede de contatos: $e');
     }
   }
+
+  // ==========================================
+  // CRIAÇÃO DE DADOS (POST)
+  // ==========================================
+
+  // 1. POST /appointments -> Criar nova consulta
+  Future<bool> createAppointment(String title, String date, String time, String location) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}/appointments'),
+        headers: headers,
+        body: jsonEncode({
+          'title': title,
+          'date': date,
+          'time': time,
+          'location': location,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else {
+        final Map<String, dynamic> json = jsonDecode(utf8.decode(response.bodyBytes));
+        throw Exception(json['message'] ?? 'Erro ao criar compromisso.');
+      }
+    } catch (e) {
+      throw Exception('Falha ao conectar: $e');
+    }
+  }
+
+  // 2. POST /care-tasks -> Criar/Adicionar novos Hábitos
+  Future<bool> createCareTasks(List<String> habits) async {
+    try {
+      final headers = await _getHeaders();
+      
+      for (String habit in habits) {
+        final response = await http.post(
+          Uri.parse('${ApiConstants.baseUrl}/care-tasks'),
+          headers: headers,
+          body: jsonEncode({
+            'title': habit,
+          }),
+        );
+
+        if (response.statusCode != 200 && response.statusCode != 201) {
+          print('Erro no Back-end: ${response.body}');
+          throw Exception('Falha ao salvar a meta $habit.');
+        }
+      }
+
+      return true; // Se o loop terminar sem falhas, tudo foi criado com sucesso
+    } catch (e) {
+      throw Exception('Falha ao conectar: $e');
+    }
+  }
+
+  // 3. POST /network/contacts -> Adicionar Novo Contato
+  Future<bool> createContact(String type, String name, String phone, String relation) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}/network/contacts'),
+        headers: headers,
+        body: jsonEncode({
+          'type': type,
+          'name': name,
+          'phone': phone,
+          'relation': relation,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else {
+        final Map<String, dynamic> json = jsonDecode(utf8.decode(response.bodyBytes));
+        throw Exception(json['message'] ?? 'Erro ao criar contato.');
+      }
+    } catch (e) {
+      throw Exception('Falha ao conectar: $e');
+    }
+  }
+
+  // 4. PUT /appointments/:id -> Editar Consulta
+  Future<bool> updateAppointment(String id, String title, String date, String time, String location) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
+        Uri.parse('${ApiConstants.baseUrl}/appointments/$id'),
+        headers: headers,
+        body: jsonEncode({
+          'title': title,
+          'date': date,
+          'time': time,
+          'location': location,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) {
+        return true;
+      } else {
+        final Map<String, dynamic> json = jsonDecode(utf8.decode(response.bodyBytes));
+        throw Exception(json['message'] ?? 'Erro ao atualizar compromisso.');
+      }
+    } catch (e) {
+      throw Exception('Falha ao conectar: $e');
+    }
+  }
+
+  // 5. DELETE /appointments/:id -> Excluir Consulta
+  Future<bool> deleteAppointment(String id) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('${ApiConstants.baseUrl}/appointments/$id'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) {
+        return true;
+      } else {
+        final Map<String, dynamic> json = jsonDecode(utf8.decode(response.bodyBytes));
+        throw Exception(json['message'] ?? 'Erro ao excluir compromisso.');
+      }
+    } catch (e) {
+      throw Exception('Falha ao conectar: $e');
+    }
+  }
+
+  // 6. DELETE /care-tasks/:id -> Excluir Tarefa de Cuidado
+  Future<bool> deleteCareTask(String id) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('${ApiConstants.baseUrl}/care-tasks/$id'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) {
+        return true;
+      } else {
+        final Map<String, dynamic> json = jsonDecode(utf8.decode(response.bodyBytes));
+        throw Exception(json['message'] ?? 'Erro ao excluir tarefa.');
+      }
+    } catch (e) {
+      throw Exception('Falha ao conectar: $e');
+    }
+  }
 }
